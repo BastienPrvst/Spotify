@@ -29,7 +29,7 @@ final class MainController extends AbstractController
     {
         $session = $request->getSession();
         $accessToken = $session->get('spotify_access_token', '');
-        $expiration = $session->get('spotify_access_info', '');
+        $invalidateTime = $session->get('time_of_refresh', '');
 
         //Création du token
         if (!$accessToken) {
@@ -37,14 +37,15 @@ final class MainController extends AbstractController
         }
 
         //Refresh du token si expiré
-        if ($expiration['expires_in'] < 1 ){
+        if (new \DateTime() > $invalidateTime) {
             return $this->redirectToRoute('app_refresh');
         }
 
-
         try {
-            //infos utilisateur
 
+            $tracksTime = $request->query->get('tracksTime', 'medium_term');
+            $artistTime = $request->query->get('artistTime', 'medium_term');
+            //infos utilisateur
             $userProfile = $this->httpClient->request(
                 'GET',
                 'https://api.spotify.com/v1/me',
@@ -55,11 +56,11 @@ final class MainController extends AbstractController
                 ]
             )->toArray();
 
-            //top 10 artist année
+            //top 10 artiste année
 
             $top10Artist = $this->httpClient->request(
                 'GET',
-                'https://api.spotify.com/v1/me/top/artists?time_range=medium_term&limit=10',
+                'https://api.spotify.com/v1/me/top/artists?time_range=' . $artistTime . '&limit=10',
                 [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $accessToken,
@@ -72,7 +73,7 @@ final class MainController extends AbstractController
 
             $top10Tracks = $this->httpClient->request(
                 'GET',
-                'https://api.spotify.com/v1/me/top/tracks?time_range=medium_term&limit=10',
+                'https://api.spotify.com/v1/me/top/tracks?time_range='. $tracksTime . '&limit=10',
                 [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $accessToken,
@@ -83,7 +84,9 @@ final class MainController extends AbstractController
             return $this->render('main/home.html.twig', [
                 'userProfile' => $userProfile,
                 'top10Tracks' => $top10Tracks,
-                'top10Artist' => $top10Artist
+                'top10Artist' => $top10Artist,
+                'tracksTime' => $tracksTime,
+                'artistTime' => $artistTime,
             ]);
 
         }catch (ClientExceptionInterface|RedirectionExceptionInterface|ServerExceptionInterface|DecodingExceptionInterface|TransportExceptionInterface $e) {
@@ -101,7 +104,7 @@ final class MainController extends AbstractController
             'response_type' => 'code',
             'client_id' => $_ENV['SPOTIFY_CLIENT_ID'],
             'redirect_uri' => $redirectUri,
-            'scope' => 'user-read-private user-read-email user-top-read',
+            'scope' => 'user-read-private user-read-email user-top-read user-read-playback-state',
         ];
 
         return $this->redirect("https://accounts.spotify.com/authorize?" . http_build_query($urlData));
@@ -144,7 +147,10 @@ final class MainController extends AbstractController
             $accessToken = $data['access_token'];
             $request->getSession()->set('spotify_access_info', $data);
             $request->getSession()->set('spotify_access_token', $accessToken);
-
+            $request->getSession()->set('spotify_refresh_token', $data['refresh_token']);
+            $invalidateTime = new \DateTime();
+            $invalidateTime->modify('+1 hour');
+            $request->getSession()->set('time_of_refresh', $invalidateTime);
 
             return $this->redirectToRoute('app_home');
 
@@ -156,6 +162,9 @@ final class MainController extends AbstractController
     #[Route('/refresh', name: 'app_refresh')]
     public function refreshToken(Request $request): Response
     {
+
+        $credentials = base64_encode($_ENV['SPOTIFY_CLIENT_ID'] . ':' . $_ENV['SPOTIFY_CLIENT_SECRET']);
+
         try {
             $response = $this->httpClient->request(
                 'POST',
@@ -163,6 +172,7 @@ final class MainController extends AbstractController
                 [
                     'headers' => [
                         'Content-Type' => 'application/x-www-form-urlencoded',
+                        'Authorization' => 'Basic ' . $credentials,
                     ],
                     'body' => [
                         'grant_type' => 'refresh_token',
@@ -175,6 +185,9 @@ final class MainController extends AbstractController
             $accessToken = $data['access_token'];
             $request->getSession()->set('spotify_access_info', $data);
             $request->getSession()->set('spotify_access_token', $accessToken);
+            $invalidateTime = new \DateTime();
+            $invalidateTime->modify('+1 hour');
+            $request->getSession()->set('time_of_refresh', $invalidateTime);
 
             return $this->redirectToRoute('app_home');
 
