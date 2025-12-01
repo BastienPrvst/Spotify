@@ -1,0 +1,135 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+
+
+
+    <main class="w-full h-full relative">
+
+        <div class="w-full flex items-center justify-center relative" >
+            <img class="w-[30%] max-w-[500px] min-w-[170px] my-10 self-center" src="{{ asset('img/Spotify_Full_Logo_RGB_Green.png') }} " alt="Logo Spotify">
+        </div>
+
+        <a class="text-white no-underline absolute top-[2%] right-[2%]" href="{{ path('app_logout') }}">Se déconnecter</a>
+
+        <img class="profil-image h-[75px] w-[75px] rounded-[50%] absolute top-[2%] left-[2%]" src="{{ userProfile.images[0].url }}" alt="Photo de profil Spotify de {{ userProfile.display_name }}">
+
+        <section class="s-1 relative h-[150px] lg:h-[300px] flex items-center ml-[2%] box-border">
+
+            <h1 class="text-4xl lg:text-7xl h-auto mr-5 underline decoration-[#04D869]">
+                <span class="text-[#04D869]">Bonjour</span>, {{ userProfile.display_name }}
+            </h1>
+
+        </section>
+
+        <section class="flex flex-col lg:flex-row mb-10">
+
+            <form class="w-full flex flex-col lg:flex-row mb-10" method="get" name="artist-form">
+
+                <div  class="flex flex-col w-full lg:w-[50%] bg-[#2C2827] lg:mx-[2%] p-10 lg:rounded-[20px]">
+
+                    <div>
+                        <h2 class="text-center text-4xl">Artistes</h2>
+                            <label for="artistTime"></label>
+                            <select class="text-white border bg-[#121212] border-[#04D869] py-3 px-4 rounded-[20px] outline-none focus-visible:border-[#04D869] appearance-none"
+                                    name="artistTime"
+                                    id="artistTime"
+                                    onchange="this.form.submit()"
+                            >
+                                <option value="short_term" {{ artistTime == 'short_term' ? 'selected' }}>Court terme</option>
+                                <option value="medium_term" {{ artistTime == 'medium_term' ? 'selected' }}>Moyen terme</option>
+                                <option value="long_term" {{ artistTime == 'long_term' ? 'selected' }}>Long terme</option>
+                            </select>
+
+
+                        {% for artist in top10Artist.items %}
+
+                            <div class="flex flex-row items-center mt-5 rounded-[20px]">
+
+                                <span class="w-5 lg:w-8">{{ loop.index }}.</span>
+
+                                <div class="h-[100px] shrink-0 flex flex-row items-center bg-[#343639] w-[90%] rounded-[10px]">
+                                    <img class="artist-image size-[100px] rounded-sm object-contain transform-gpu" src="{{ artist.images[2].url }}" alt="">
+                                    <p class="ml-4 lg:ml-8 text-lg lg:text-2xl">{{ artist.name }}</p>
+                                </div>
+                            </div>
+
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div  class="flex flex-col w-full lg:w-[50%] bg-[#2C2827] lg:mx-[2%] p-2 lg:p-10 lg:rounded-[20px]">
+
+                    <div>
+                        <h2 class="text-center text-4xl">Musiques</h2>
+
+
+
+                            <label for="tracksTime"></label>
+                            <select
+                                class="text-white border bg-[#121212] border-[#04D869] py-3 px-4 rounded-[20px] focus-visible:border-[#04D869] outline-none appearance-none"
+                                name="tracksTime"
+                                id="tracksTime"
+                                onchange="this.form.submit()"
+                            >
+                                <option value="short_term" {{ tracksTime == 'short_term' ? 'selected' }}>Court terme</option>
+                                <option value="medium_term" {{ tracksTime == 'medium_term' ? 'selected' }}>Moyen terme</option>
+                                <option value="long_term" {{ tracksTime == 'long_term' ? 'selected' }}>Long terme</option>
+                            </select>
+
+
+
+                        {% for track in top10Tracks.items %}
+
+                        <div class="flex flex-row items-center mt-5">
+
+                            <span class="w-5 lg:w-8">{{ loop.index }}.</span>
+
+                            <div class="h-[100px] shrink-0 flex flex-row items-center bg-[#343639] w-[90%] rounded-[10px]">
+                                <img class="transform-gpu album-image size-[100px] rounded-sm object-contain" src="{{ track.album.images[1].url }}" alt="">
+                                <div>
+                                    <p class="ml-4 lg:ml-8 flex flex-wrap flex flex-col">
+                                        <span class="text-lg lg:text-2xl">{{ track.name }}</span>
+                                        <span class="text-gray-200 text-sm lg:text-base">
+                                            {{ track.album.release_date }}
+                                            {% for artist in track.artists %}
+                                                {{ artist.name }}
+                                            {% endfor %}
+                                        </span>
+
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {% endfor %}
+                    </div>
+                </div>
+            </form>
+        </section>
+
+        {% if playlists.items is not empty %}
+
+        <section class="mt-[50px] mb-[150px]">
+
+            <h3 class="text-4xl pl-[2%] mb-[50px]">Vos playlists</h3>
+
+            <div class="flex align-center justify-evenly w-full">
+                {% for p in playlists.items %}
+                    <div class="flex flex-col">
+                        <img class="h-[150px] w-[150px]" src="{{ p.images[0].url }}" alt="Photo de couverture de la playlist {{ p.name }}">
+                        {{ p.name }}
+                    </div>
+
+
+                {% endfor %}
+            </div>
+
+        </section>
+
+        {% endif %}
+    </main>
+
+{% endblock %}
+
+
