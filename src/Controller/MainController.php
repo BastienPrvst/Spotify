@@ -7,6 +7,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Contracts\HttpClient\Exception\ClientExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\DecodingExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\RedirectionExceptionInterface;
@@ -14,18 +15,16 @@ use Symfony\Contracts\HttpClient\Exception\ServerExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
-
 final class MainController extends AbstractController
 {
 
     public function __construct(
         private readonly HttpClientInterface $httpClient,
-    )
-    {
+    ) {
     }
 
     #[Route('/', name: 'app_home')]
-    public function home(Request $request) : Response
+    public function home(Request $request, SerializerInterface $serializer) : Response
     {
         $session = $request->getSession();
         $accessToken = $session->get('spotify_access_token', '');
@@ -42,7 +41,6 @@ final class MainController extends AbstractController
         }
 
         try {
-
             $tracksTime = $request->query->get('tracksTime', 'medium_term');
             $artistTime = $request->query->get('artistTime', 'medium_term');
             //infos utilisateur
@@ -81,18 +79,35 @@ final class MainController extends AbstractController
                 ]
             )->toArray();
 
+            //Playlists
+
+            $playlists = $this->httpClient->request(
+                'GET',
+                'https://api.spotify.com/v1/me/playlists',
+                [
+                    'headers' => [
+                        'Authorization' => 'Bearer ' . $accessToken,
+                    ],
+                ]
+            )->toArray();
+
             return $this->render('main/home.html.twig', [
                 'userProfile' => $userProfile,
                 'top10Tracks' => $top10Tracks,
                 'top10Artist' => $top10Artist,
                 'tracksTime' => $tracksTime,
                 'artistTime' => $artistTime,
+                'playlists' => $playlists,
             ]);
-
-        }catch (ClientExceptionInterface|RedirectionExceptionInterface|ServerExceptionInterface|DecodingExceptionInterface|TransportExceptionInterface $e) {
+        } catch (ClientExceptionInterface
+        |RedirectionExceptionInterface
+        |ServerExceptionInterface
+        |DecodingExceptionInterface
+        |TransportExceptionInterface
+        $e
+        ) {
             return new Response('Erreur : ' . $e->getMessage());
         }
-
     }
 
     #[Route('/login', name: 'app_login')]
@@ -105,6 +120,8 @@ final class MainController extends AbstractController
             'client_id' => $_ENV['SPOTIFY_CLIENT_ID'],
             'redirect_uri' => $redirectUri,
             'scope' => 'user-read-private user-read-email user-top-read user-read-playback-state',
+            'user-modify-playback-state',
+            'show_dialog' => true
         ];
 
         return $this->redirect("https://accounts.spotify.com/authorize?" . http_build_query($urlData));
@@ -153,7 +170,6 @@ final class MainController extends AbstractController
             $request->getSession()->set('time_of_refresh', $invalidateTime);
 
             return $this->redirectToRoute('app_home');
-
         } catch (\Exception $e) {
             return new Response('Erreur : ' . $e->getMessage());
         }
@@ -190,12 +206,23 @@ final class MainController extends AbstractController
             $request->getSession()->set('time_of_refresh', $invalidateTime);
 
             return $this->redirectToRoute('app_home');
-
-        }catch (ClientExceptionInterface|RedirectionExceptionInterface|ServerExceptionInterface|DecodingExceptionInterface|TransportExceptionInterface $e) {
+        } catch (ClientExceptionInterface
+        |RedirectionExceptionInterface
+        |ServerExceptionInterface
+        |DecodingExceptionInterface
+        |TransportExceptionInterface
+        $e) {
             return new Response('Erreur : ' . $e->getMessage());
         }
     }
 
+    #[Route(path: '/logout', name: 'app_logout')]
+    public function logout(Request $request): RedirectResponse
+    {
+        $session = $request->getSession();
+        $session->clear();
+        $session->invalidate();
 
-
+        return $this->redirectToRoute('app_login');
+    }
 }
